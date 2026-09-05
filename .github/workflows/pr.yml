@@ -9,14 +9,36 @@ on:
       - gh-actions-test-branch
 
   workflow_dispatch:
+    inputs:
+      leg:
+        description: "baseline (uninstrumented) or instrumented (under chalk/curiosity)"
+        type: choice
+        options: [instrumented, baseline]
+        default: instrumented
+      profile:
+        description: "CrashOverride chalk profile"
+        type: string
+        default: curiosity-tests-racecar
+      racecar_run:
+        description: "racecar correlation token, echoed into the run name"
+        type: string
+        default: ""
 
 permissions:
   actions: write
   contents: read
+  id-token: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ inputs.leg || 'push' }}-${{ inputs.racecar_run }}
+  cancel-in-progress: false
+
+env:
+  # The one variable that separates the arms: on baseline, action-checkout
+  # skips its Set up Chalk step entirely.
+  CHALK_ON: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+
+run-name: "PR Update ${{ inputs.leg || 'push' }} ${{ inputs.racecar_run }}"
 
 jobs:
   # Security gate: Check if PR is from a trusted contributor or approved via run-ci label
@@ -28,6 +50,8 @@ jobs:
       pull-requests: read
       actions: read
       issues: read
+      contents: read
+      id-token: write
     outputs:
       is-trusted: ${{ steps.check-trust.outputs.is-trusted }}
     steps:
@@ -165,6 +189,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
+      contents: read
+      id-token: write
     outputs:
       has-files-requiring-all-checks: ${{ steps.filter-exclusions.outputs.has-files-requiring-all-checks }}
       has-api-v2-changes: ${{ steps.filter-inclusions.outputs.has-api-v2-changes }}
@@ -173,9 +199,20 @@ jobs:
       run-e2e: ${{ steps.check-if-pr-has-label.outputs.run-e2e == 'true' }}
       db-cache-hit: ${{ steps.cache-db-check.outputs.cache-hit }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: crashappsec/action-checkout@main
         with:
+          chalk: ${{ env.CHALK_ON }}
+          profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
+          observables_continue_on_error: false
+          lfs: false
           sparse-checkout: .github
+      - name: Assert instrumentation is live
+        if: env.CHALK_ON == 'true'
+        run: |
+          test -n "${CURIOSITY_ROOT:-}" || { echo "::error::CURIOSITY_ROOT unset - observables never installed"; exit 1; }
+          test -S "${CURIOSITY_SOCKET_NAME:?socket name unset}" || { echo "::error::co-hostd socket absent"; exit 1; }
+
       - uses: ./.github/actions/cache-checkout
       - name: Generate DB cache key
         id: cache-db-key
@@ -298,6 +335,9 @@ jobs:
     needs: [prepare]
     if: ${{ needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/check-types.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   lint:
@@ -305,6 +345,9 @@ jobs:
     needs: [prepare]
     if: ${{ needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/lint.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   unit-test:
@@ -312,6 +355,9 @@ jobs:
     needs: [prepare]
     if: ${{ needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/unit-tests.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   api-v2-unit-test:
@@ -319,6 +365,9 @@ jobs:
     needs: [prepare]
     if: ${{ needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/api-v2-unit-tests.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   security-audit:
@@ -326,6 +375,9 @@ jobs:
     needs: [prepare]
     if: ${{ needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/security-audit.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   check-prisma-migrations:
@@ -333,6 +385,9 @@ jobs:
     needs: [prepare]
     if: ${{ needs.prepare.outputs.has-prisma-changes == 'true' }}
     uses: ./.github/workflows/check-prisma-migrations.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   setup-db:
@@ -341,6 +396,8 @@ jobs:
     if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/setup-db.yml
     with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
       DB_CACHE_HIT: ${{ needs.prepare.outputs.db-cache-hit }}
     secrets: inherit
 
@@ -349,6 +406,9 @@ jobs:
     needs: [prepare]
     if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/api-v2-production-build.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   build-atoms:
@@ -356,6 +416,9 @@ jobs:
     needs: [prepare]
     if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/atoms-production-build.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   build:
@@ -363,6 +426,9 @@ jobs:
     needs: [prepare]
     if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/production-build-without-database.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   integration-test:
@@ -370,6 +436,9 @@ jobs:
     needs: [prepare, build, setup-db]
     if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/integration-tests.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   e2e:
@@ -377,6 +446,9 @@ jobs:
     needs: [prepare, build, setup-db]
     if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/e2e.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   e2e-api-v2:
@@ -384,6 +456,9 @@ jobs:
     needs: [prepare, setup-db]
     if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/e2e-api-v2.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   e2e-app-store:
@@ -391,6 +466,9 @@ jobs:
     needs: [prepare, build, setup-db]
     if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/e2e-app-store.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   e2e-embed:
@@ -398,6 +476,9 @@ jobs:
     needs: [prepare, build, setup-db]
     if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/e2e-embed.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   e2e-embed-react:
@@ -405,12 +486,18 @@ jobs:
     needs: [prepare, build, setup-db]
     if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
     uses: ./.github/workflows/e2e-embed-react.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   analyze:
     name: Analyze Build
     needs: [build]
     uses: ./.github/workflows/nextjs-bundle-analysis.yml
+    with:
+      chalk_on: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+      profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   required:
