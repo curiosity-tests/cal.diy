@@ -11,12 +11,12 @@ on:
   workflow_dispatch:
     inputs:
       leg:
-        description: "baseline (uninstrumented) or instrumented (under chalk/curiosity)"
+        description: baseline (uninstrumented) or instrumented (under chalk/curiosity)
         type: choice
         options: [instrumented, baseline]
         default: instrumented
       profile:
-        description: "CrashOverride chalk profile"
+        description: CrashOverride chalk profile
         type: string
         default: curiosity-tests-racecar
       racecar_run:
@@ -333,7 +333,7 @@ jobs:
   type-check:
     name: Type Checks
     needs: [prepare]
-    if: ${{ needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/check-types.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -343,7 +343,7 @@ jobs:
   lint:
     name: Linters
     needs: [prepare]
-    if: ${{ needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/lint.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -353,7 +353,7 @@ jobs:
   unit-test:
     name: Tests
     needs: [prepare]
-    if: ${{ needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/unit-tests.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -363,7 +363,7 @@ jobs:
   api-v2-unit-test:
     name: Tests
     needs: [prepare]
-    if: ${{ needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/api-v2-unit-tests.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -373,7 +373,7 @@ jobs:
   security-audit:
     name: Security Audit
     needs: [prepare]
-    if: ${{ needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/security-audit.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -383,7 +383,7 @@ jobs:
   check-prisma-migrations:
     name: Check Prisma Migrations
     needs: [prepare]
-    if: ${{ needs.prepare.outputs.has-prisma-changes == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-prisma-changes == 'true') }}
     uses: ./.github/workflows/check-prisma-migrations.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -393,7 +393,7 @@ jobs:
   setup-db:
     name: Setup Database
     needs: [prepare]
-    if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/setup-db.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -404,7 +404,7 @@ jobs:
   build-api-v2:
     name: Production builds
     needs: [prepare]
-    if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/api-v2-production-build.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -414,7 +414,7 @@ jobs:
   build-atoms:
     name: Production builds
     needs: [prepare]
-    if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/atoms-production-build.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -424,7 +424,7 @@ jobs:
   build:
     name: Production builds
     needs: [prepare]
-    if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/production-build-without-database.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -434,7 +434,7 @@ jobs:
   integration-test:
     name: Tests
     needs: [prepare, build, setup-db]
-    if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/integration-tests.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -444,7 +444,7 @@ jobs:
   e2e:
     name: Tests
     needs: [prepare, build, setup-db]
-    if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/e2e.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -454,7 +454,7 @@ jobs:
   e2e-api-v2:
     name: Tests
     needs: [prepare, setup-db]
-    if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/e2e-api-v2.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -464,7 +464,7 @@ jobs:
   e2e-app-store:
     name: Tests
     needs: [prepare, build, setup-db]
-    if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/e2e-app-store.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -474,7 +474,7 @@ jobs:
   e2e-embed:
     name: Tests
     needs: [prepare, build, setup-db]
-    if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/e2e-embed.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -484,7 +484,7 @@ jobs:
   e2e-embed-react:
     name: Tests
     needs: [prepare, build, setup-db]
-    if: ${{ needs.prepare.outputs.run-e2e == 'true' && needs.prepare.outputs.has-files-requiring-all-checks == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/e2e-embed-react.yml
     with:
       chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
@@ -525,6 +525,19 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: crashappsec/action-checkout@main
+        with:
+          chalk: ${{ env.CHALK_ON }}
+          profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
+          observables_continue_on_error: false
+          lfs: false
+      - name: Assert instrumentation is live
+        if: env.CHALK_ON == 'true'
+        run: |
+          test -n "${CURIOSITY_ROOT:-}" || { echo "::error::CURIOSITY_ROOT unset - observables never installed"; exit 1; }
+          test -S "${CURIOSITY_SOCKET_NAME:?socket name unset}" || { echo "::error::co-hostd socket absent"; exit 1; }
+
       - name: Fail if trust-check did not succeed
         run: |
           echo "::error::Trust check did not complete successfully (result: ${{ needs.trust-check.result }}). Please re-run the workflow."
