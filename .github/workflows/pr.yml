@@ -36,7 +36,7 @@ concurrency:
 env:
   # The one variable that separates the arms: on baseline, action-checkout
   # skips its Set up Chalk step entirely.
-  CHALK_ON: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+  CHALK_ON: ${{ inputs.leg == 'instrumented' }}
 
 run-name: "PR Update ${{ inputs.leg || 'push' }} ${{ inputs.racecar_run }}"
 
@@ -333,70 +333,70 @@ jobs:
   type-check:
     name: Type Checks
     needs: [prepare]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/check-types.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   lint:
     name: Linters
     needs: [prepare]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/lint.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   unit-test:
     name: Tests
     needs: [prepare]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/unit-tests.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   api-v2-unit-test:
     name: Tests
     needs: [prepare]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/api-v2-unit-tests.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   security-audit:
     name: Security Audit
     needs: [prepare]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/security-audit.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   check-prisma-migrations:
     name: Check Prisma Migrations
     needs: [prepare]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-prisma-changes == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-prisma-changes == 'true') }}
     uses: ./.github/workflows/check-prisma-migrations.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   setup-db:
     name: Setup Database
     needs: [prepare]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/setup-db.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
       DB_CACHE_HIT: ${{ needs.prepare.outputs.db-cache-hit }}
     secrets: inherit
@@ -404,90 +404,90 @@ jobs:
   build-api-v2:
     name: Production builds
     needs: [prepare]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/api-v2-production-build.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   build-atoms:
     name: Production builds
     needs: [prepare]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/atoms-production-build.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   build:
     name: Production builds
     needs: [prepare]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/production-build-without-database.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   integration-test:
     name: Tests
     needs: [prepare, build, setup-db]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/integration-tests.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   e2e:
     name: Tests
     needs: [prepare, build, setup-db]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/e2e.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   e2e-api-v2:
     name: Tests
     needs: [prepare, setup-db]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/e2e-api-v2.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   e2e-app-store:
     name: Tests
     needs: [prepare, build, setup-db]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/e2e-app-store.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   e2e-embed:
     name: Tests
     needs: [prepare, build, setup-db]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/e2e-embed.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
   e2e-embed-react:
     name: Tests
     needs: [prepare, build, setup-db]
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && (github.event_name == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
+    if: ${{ ('push' == 'workflow_dispatch' || needs.prepare.outputs.run-e2e == 'true') && ('push' == 'workflow_dispatch' || needs.prepare.outputs.has-files-requiring-all-checks == 'true') }}
     uses: ./.github/workflows/e2e-embed-react.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
@@ -496,7 +496,7 @@ jobs:
     needs: [build]
     uses: ./.github/workflows/nextjs-bundle-analysis.yml
     with:
-      chalk_on: ${{ (github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline') && 'true' || 'false' }}
+      chalk_on: ${{ inputs.leg == 'instrumented' && 'true' || 'false' }}
       profile: ${{ inputs.profile || 'curiosity-tests-racecar' }}
     secrets: inherit
 
